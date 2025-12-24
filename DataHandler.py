@@ -144,7 +144,7 @@ class DataHandler:
 			加载训练的User-Item交互矩阵
 		
 		'''
-		self.diffusionData = DiffusionData(torch.FloatTensor(self.trnMat.A))
+		self.diffusionData = DiffusionData(torch.FloatTensor(self.trnMat.toarray()))
 		self.diffusionLoader = dataloader.DataLoader(self.diffusionData, batch_size=args.batch, shuffle=True, num_workers=0)
 		# 多模态特征
 		self.multimodalFeatureData =  MultimodalFeatureDataset(self.image_feats, self.text_feats, self.audio_feats)
