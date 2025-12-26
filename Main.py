@@ -147,14 +147,22 @@ class Coach:
 			self.text_II_matrix.shape: torch.Size([6710, 6710])
 			self.audio_II_matrix.shape: torch.Size([6710, 6710])
 		'''
-		self.image_II_origin_matrix_dense, self.image_II_matrix= self.buildItem2ItemMatrix(self.image_embedding) 
-		self.text_II_origin_matrix_dense, self.text_II_matrix = self.buildItem2ItemMatrix(self.text_embedding)	
+		self.image_II_origin_matrix_dense, self.image_II_matrix= self.buildItem2ItemMatrix(self.image_embedding)
+		self.text_II_origin_matrix_dense, self.text_II_matrix = self.buildItem2ItemMatrix(self.text_embedding)
 		if args.data == 'tiktok':
-			self.audio_II_origin_matrix_dense, self.audio_II_matrix = self.buildItem2ItemMatrix(self.audio_embedding)	
+			self.audio_II_origin_matrix_dense, self.audio_II_matrix = self.buildItem2ItemMatrix(self.audio_embedding)
+
+		# Initialize adaptive flip scheduler if enabled
+		adaptive_scheduler = None
+		if args.use_adaptive_flip:
+			from adaptive_flip_scheduler import build_scheduler_from_dataset
+			adaptive_scheduler = build_scheduler_from_dataset(args, self.handler)
+			print(f"✓ Adaptive flip scheduler initialized with base_flip_prob={args.flip_prob}")
 
 		self.diffusion_model = FlipInterestDiffusion(
 			steps=args.steps,
-			base_temp=args.flip_temp
+			base_temp=args.flip_temp,
+			adaptive_scheduler=adaptive_scheduler
 		)
 
 		out_dims = self.image_embedding.shape[0]
@@ -220,12 +228,16 @@ class Coach:
 		'''
 			Generative training for User-Item Graph
 		'''
+		# Print adaptive scheduler stats if enabled
+		if args.use_adaptive_flip and self.diffusion_model.adaptive_scheduler is not None:
+			self.diffusion_model.adaptive_scheduler.print_epoch_stats(ep)
+
 		trnLoader = self.handler.trnLoader
 		trnLoader.dataset.negSampling()
 		epLoss, epRecLoss, epClLoss = 0, 0, 0
 		# add Bias_Rate, KL_Rate
 		# bias_rate_without_mid, kl_rate_without_mid, bias_rate_with_mid, kl_rate_with_mid = 0, 0, 0, 0
-		
+
 		epDiLoss = 0
 		epDiLoss_image, epDiLoss_text = 0, 0
 		if args.data == 'tiktok':
@@ -294,7 +306,12 @@ class Coach:
 			# print("text_feats.shape:", image_feats.shape)
 			# print("audio_feats:", image_feats)
 			# print("audio_feats.shape:", image_feats.shape)
-			loss_image = self.diffusion_model.training_losses(self.denoise_model_image, batch_item, iEmbeds, batch_index, image_feats, text_feats, audio_feats)
+			# Pass user_ids and current_epoch for adaptive flip scheduling
+			loss_image = self.diffusion_model.training_losses(
+				self.denoise_model_image, batch_item, iEmbeds, batch_index,
+				image_feats, text_feats, audio_feats,
+				user_ids=batch_index, current_epoch=ep
+			)
 			epDiLoss_image += loss_image.item()
 			loss = loss_image
 			loss.backward()

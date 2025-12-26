@@ -1,0 +1,11 @@
+Experiment Configuration
+========================
+Dataset: sports
+GPU: 0
+Epochs: 50
+Batch Size: 1024
+Learning Rate: 1e-3
+Sampling Steps: 5
+Gen TopK: 5
+Rebuild K: 1
+Timestamp: 20251226_132814

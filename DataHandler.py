@@ -55,10 +55,10 @@ class DataHandler:
 		mat = self.normalizeAdj(mat)
 	
 		# mat_ = mat.tolil()
-		print("mat:", mat)
+		# print("mat:", mat)
 		# slice_mat = mat_[: args.user, args.user :] 
 		mat_ = mat.tocsr()[: args.user, args.user :].tocoo()
-		print("mat_:", mat_)
+		# print("mat_:", mat_)
 		# print("mat.tolil():", mat.tolil())
 		# print('---->', slice_mat[:5])
 		# make sub tensor

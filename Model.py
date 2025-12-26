@@ -544,11 +544,12 @@ class FlipInterestDiffusion(nn.Module):
 		p_sample(): reverse diffusion process
 		training_losses(): loss function
 	'''
-	def __init__(self, steps=5, base_temp=1.0):
-		super(FlipInterestDiffusion, self).__init__()  
-		self.eps = 1e-8 
+	def __init__(self, steps=5, base_temp=1.0, adaptive_scheduler=None):
+		super(FlipInterestDiffusion, self).__init__()
+		self.eps = 1e-8
 		self.steps = steps
-		self.base_temp = base_temp  
+		self.base_temp = base_temp
+		self.adaptive_scheduler = adaptive_scheduler  # Adaptive flip probability scheduler
 		#self.alpha_bar0, self.alpha_bar1 = self.get_cum() # self.alpha_bar0：0->1 cumulative transition probability state trans，self.alpha_bar1 1->0 cumulative transition probability
 		
 	def _compute_sparsity(self, x):
@@ -605,7 +606,7 @@ class FlipInterestDiffusion(nn.Module):
 			return noise
 
 	
-	def q_sample(self, x_start, t, temp_scale=1.0):
+	def q_sample(self, x_start, t, temp_scale=1.0, user_ids=None, current_epoch=0):
 		"""
 			x_start:
 			 		[tensor([[0., 0., 0.,  ..., 0., 0., 0.],
@@ -617,8 +618,10 @@ class FlipInterestDiffusion(nn.Module):
 					[0., 0., 0.,  ..., 0., 0., 0.]])
 
 			x_start.shape: torch.Size([1024, 6710])
-			t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024]) 
-			# alphas_cumprod: tensor([0.9999, 0.9997, 0.9995, 0.9992, 0.9990], device='cuda:0', dtype=torch.float64) 
+			t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024])
+			user_ids: (batch_size,) tensor of user IDs for adaptive scheduling (optional)
+			current_epoch: current training epoch for adaptive scheduling (optional)
+			# alphas_cumprod: tensor([0.9999, 0.9997, 0.9995, 0.9992, 0.9990], device='cuda:0', dtype=torch.float64)
 			# alphas_cumprod.shape: torch.Size([5])
 
 			self._extract_into_tensor(self.sqrt_alphas_cumprod, t, x_start.shape) : tensor([[0.9997, 0.9997, 0.9997,  ..., 0.9997, 0.9997, 0.9997],
@@ -633,7 +636,7 @@ class FlipInterestDiffusion(nn.Module):
 		"""
 		# Dynamically generate data-based cumulative transition probabilities
 		gamma_cum, epsilon_cum = self.get_cum(x_start)
-		
+
 		# Extract the cumulative probability at the current time step
 		self.alpha_bar0_t = self._extract_into_tensor(gamma_cum, t, x_start.shape)
 		self.alpha_bar1_t = self._extract_into_tensor(epsilon_cum, t, x_start.shape)
@@ -646,13 +649,29 @@ class FlipInterestDiffusion(nn.Module):
 			torch.sigmoid((self.alpha_bar0_t - noise) * self.base_temp),  # 0->1
 			torch.sigmoid((self.alpha_bar1_t - noise) * self.base_temp)   # 1->0
 		)
-		
+
+		# Apply adaptive flip probability scheduling if available
+		if self.adaptive_scheduler is not None and user_ids is not None:
+			# Get user-based adaptive flip probabilities (batch_size,)
+			adaptive_flip_probs = self.adaptive_scheduler.get_user_flip_probabilities(
+				user_ids, current_epoch
+			)  # Shape: (batch_size,)
+
+			# Expand to match flip_prob shape (batch_size, num_items)
+			adaptive_multiplier = adaptive_flip_probs.unsqueeze(1).expand_as(flip_prob)
+
+			# Apply adaptive multiplier to flip probabilities
+			flip_prob = flip_prob * adaptive_multiplier
+
+			# Clip to valid probability range
+			flip_prob = torch.clamp(flip_prob, min=0.01, max=0.95)
+
 		# flip the bits based on bernoulli flip probability distribution
 		flip_mask = torch.bernoulli(flip_prob)
 		# print("flip_mask:", flip_mask)
 		x_t = x_start.clone()
 		x_t[flip_mask.bool()] = 1 - x_t[flip_mask.bool()]
-		
+
 		return x_t
 
 	def p_sample(self, model, x_start, steps, bayesian_samplinge_schedule=True):
@@ -717,21 +736,24 @@ class FlipInterestDiffusion(nn.Module):
 	
 		return x_t, probs
 
-	def training_losses(self, model, x_start, itmEmbeds, batch_index, model_feats, text_feats, audio_feats):
+	def training_losses(self, model, x_start, itmEmbeds, batch_index, model_feats, text_feats, audio_feats, user_ids=None, current_epoch=0):
 		'''
 			In the loss function design of diffusion models, the following issues need to be considered:
 			The traditional MSE loss should be replaced with the binary cross-entropy loss.
 			Since the number of un-click information (value 0) is far greater than that of interacted information (value 1), the class imbalance problem needs to be addressed.
 
+		Args:
+			user_ids: (batch_size,) tensor of user IDs for adaptive scheduling (optional)
+			current_epoch: current training epoch for adaptive scheduling (optional)
 		'''
 		# Dynamic class weight calculation
 		pos_weight = torch.sum(1 - x_start) / (torch.sum(x_start) + 1e-8)
 		# pos_weight =  (torch.sum(x_start) + 1e-8) / torch.sum(1 - x_start)
 		batch_size = x_start.size(0)
 		# Randomly sample time steps
-		t = torch.randint(0, self.steps, (batch_size,)).long().cuda() # t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024]) 
-		# Forward generation
-		x_t = self.q_sample(x_start, t) # torch.Size([1024, 6710])
+		t = torch.randint(0, self.steps, (batch_size,)).long().cuda() # t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024])
+		# Forward generation with adaptive flip scheduling
+		x_t = self.q_sample(x_start, t, user_ids=user_ids, current_epoch=current_epoch) # torch.Size([1024, 6710])
 		logits, probs = self.p_interest_shift_probs(model, x_t, t)
 		###########################Focal Loss###########################
 		gamma = 2.0  # Focus Parameter: The larger its value, the higher the attention paid to hard samples 2.0 

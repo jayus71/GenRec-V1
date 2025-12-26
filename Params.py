@@ -1,5 +1,16 @@
 import argparse
 
+def str2bool(v):
+	"""Convert string to boolean for argparse"""
+	if isinstance(v, bool):
+		return v
+	if v.lower() in ('yes', 'true', 't', 'y', '1'):
+		return True
+	elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+		return False
+	else:
+		raise argparse.ArgumentTypeError('Boolean value expected.')
+
 def ParseArgs():
 	parser = argparse.ArgumentParser(description='Model Params')
 	parser.add_argument('--lr', default=1e-3, type=float, help='learning rate')
@@ -20,11 +31,11 @@ def ParseArgs():
 	
 	parser.add_argument('--dims', type=str, default='[1000]')
 	parser.add_argument('--d_emb_size', type=int, default=10)
-	parser.add_argument('--norm', type=bool, default=True)
+	parser.add_argument('--norm', type=str2bool, default=True)
 	parser.add_argument('--noise_scale', type=float, default=0.1)
 	parser.add_argument('--noise_min', type=float, default=0.0001)
 	parser.add_argument('--noise_max', type=float, default=0.02)
-	parser.add_argument('--sampling_noise', type=bool, default=True)
+	parser.add_argument('--sampling_noise', type=str2bool, default=True)
 	parser.add_argument('--sampling_steps', type=int, default=5)
 
 	parser.add_argument('--rebuild_k', type=int, default=1)
@@ -35,14 +46,14 @@ def ParseArgs():
 	parser.add_argument('--cl_method', type=int, default=0, help='0:m vs m ; 1:m vs main')
 
 	# add new params
-	parser.add_argument('--bayesian_samplinge_schedule', type=bool, default=True)
+	parser.add_argument('--bayesian_samplinge_schedule', type=str2bool, default=True)
 	parser.add_argument('--gamma_start', type=float, default=0.0001)
 	parser.add_argument('--gamma_end', type=float, default=0.01)
 	parser.add_argument('--epsilon_start', type=float, default=0.01)
 	parser.add_argument('--epsilon_end', type=float, default=0.0001)
 	parser.add_argument('--steps', type=int, default=5)
-	parser.add_argument('--knn_k', type=int, default=5) 
-	parser.add_argument('--sparse', type=bool, default=True) 
+	parser.add_argument('--knn_k', type=int, default=5)
+	parser.add_argument('--sparse', type=str2bool, default=True) 
 	
 	# add model params
 	parser.add_argument('--sparse_temp', default=0.2, type=float, help='temperature in contrastive learning')
@@ -61,19 +72,26 @@ def ParseArgs():
 	parser.add_argument('--kmeans_cluster_num', default=20, type=int, help='kmeans_cluster_num')
 	parser.add_argument('--nhead', default=8, type=int, help='transformer nhead')
 	parser.add_argument('--num_layers', default=6, type=int, help='transformer num_layers')
-	parser.add_argument('--use_auto_optimal_k', type=bool, default=False) 
+	parser.add_argument('--use_auto_optimal_k', type=str2bool, default=False) 
 	parser.add_argument('--dataset', default='tiktok', type=str, help='name of dataset')
 	parser.add_argument('--image_norm', default=0.5, type=float, help='image modal feature norm weight')
 	parser.add_argument('--text_norm', default=0.3, type=float, help='text modal feature norm weight')
 	parser.add_argument('--audio_norm', default=0.2, type=float, help='audio modal feature norm weight')	
 	# add ablation study params
-	parser.add_argument('--OpenInterestDebiase', type=bool, default=False, help='open the InterestDebiase Module') 
-	parser.add_argument('--OpenUIG', type=bool, default=False, help='open the Undebised Interest Generation Module') 
-	parser.add_argument('--OpenFlipGen', type=bool, default=False, help='open the Flip Generation SubModule') 
-	parser.add_argument('--OpenTransformer', type=bool, default=False, help='open the Flip Generation SubModule') 
-	parser.add_argument('--OpenMMCL', type=bool, default=False, help='open the Multimodal SSL Contrative Learning SubModule') 
-	parser.add_argument('--OpenVisual', type=bool, default=True, help='open the Result Visual') 
+	parser.add_argument('--OpenInterestDebiase', type=str2bool, default=False, help='open the InterestDebiase Module')
+	parser.add_argument('--OpenUIG', type=str2bool, default=False, help='open the Undebised Interest Generation Module')
+	parser.add_argument('--OpenFlipGen', type=str2bool, default=False, help='open the Flip Generation SubModule')
+	parser.add_argument('--OpenTransformer', type=str2bool, default=False, help='open the Flip Generation SubModule')
+	parser.add_argument('--OpenMMCL', type=str2bool, default=False, help='open the Multimodal SSL Contrative Learning SubModule')
+	parser.add_argument('--OpenVisual', type=str2bool, default=True, help='open the Result Visual')
 	parser.add_argument('--flip_temp', default=1.0, type=float, help='flip diffusion tempeature ratio')
-	
+
+	# Adaptive Flip Probability Scheduler params
+	parser.add_argument('--use_adaptive_flip', type=str2bool, default=True, help='use adaptive flip probability scheduler')
+	parser.add_argument('--flip_prob', default=0.15, type=float, help='base flip probability')
+	parser.add_argument('--use_activity_adaptive', type=str2bool, default=True, help='enable user activity-based flip scheduling')
+	parser.add_argument('--use_epoch_adaptive', type=str2bool, default=True, help='enable epoch-based flip scheduling')
+	parser.add_argument('--use_popularity_adaptive', type=str2bool, default=True, help='enable item popularity-based flip scheduling')
+
 	return parser.parse_args()
 args = ParseArgs()

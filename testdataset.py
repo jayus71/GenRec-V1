@@ -437,5 +437,47 @@ def _(mo):
     return
 
 
+@app.cell
+def _(coo_matrix, np, pickle, sp):
+    # 物品交互与稀疏度分析（Sports）
+    _sports_predir = './Datasets/sports/'
+    _sports_trnfile = _sports_predir + 'trnMat.pkl'
+
+    with open(_sports_trnfile, 'rb') as _fs:
+        _ret = (pickle.load(_fs) != 0).astype(np.float32)
+    if type(_ret) != coo_matrix:
+        _ret = sp.coo_matrix(_ret)
+    _sports_trnMat = _ret
+
+    _sports_item_interactions = np.array(_sports_trnMat.sum(axis=0)).flatten()
+    print(f"_sports_item_interactions: {_sports_item_interactions} ")
+
+    _sports_user_interactions = np.array(_sports_trnMat.sum(axis=1)).flatten()
+    print(f"_sports_user_interactions: {_sports_user_interactions}")
+
+    _sports_n_users, _sports_n_items = _sports_trnMat.shape
+    _sports_interaction_count = _sports_trnMat.nnz
+    _sports_sparsity = 1 - (_sports_interaction_count / (_sports_n_users * _sports_n_items))
+
+    print(f"Number of Users: {_sports_n_users}")
+    print(f"Number of Items: {_sports_n_items}")
+    print(f"Total Interactions: {_sports_interaction_count}")
+    print(f"Sparsity of the matrix: {_sports_sparsity * 100:.2f}%")
+    return
+
+
+@app.cell
+def _(mo, np):
+    # 创建一个日期选择器
+    current_date = mo.ui.date(label='选择日期', value=str(np.datetime64('today')))
+    current_date  # 自动显示UI
+    return
+
+
+@app.cell
+def _():
+    return
+
+
 if __name__ == "__main__":
     app.run()
