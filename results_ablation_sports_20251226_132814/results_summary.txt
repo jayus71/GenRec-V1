@@ -1,0 +1,44 @@
+Adaptive Flip Scheduler Ablation Study Results
+===============================================
+Dataset: sports
+Date: 20251226_132814
+
+Experiment Configurations:
+--------------------------
+1. Baseline (no adaptive)
+2. Activity-only adaptive
+3. Epoch-only adaptive
+4. Popularity-only adaptive
+5. Activity + Epoch adaptive
+6. Activity + Popularity adaptive
+7. Epoch + Popularity adaptive
+8. Full adaptive (baseline flip_prob=0.15)
+9. Full adaptive (flip_prob=0.10)
+10. Full adaptive (flip_prob=0.20)
+
+Results:
+--------
+
+exp10_full_adaptive_flip0.20:
+----------------------------------------
+modality: image_modal best_kmeans_cluster_num: 9
+modality: text_modal best_kmeans_cluster_num: 12
+Best epoch :  13  , Recall :  0.10007359932915129  , NDCG :  0.04449099899225766  , Precision 0.005288218439238162
+
+exp7_epoch_popularity:
+----------------------------------------
+modality: image_modal best_kmeans_cluster_num: 9
+modality: text_modal best_kmeans_cluster_num: 12
+Best epoch :  12  , Recall :  0.09975507331957523  , NDCG :  0.04454186293801478  , Precision 0.0052783864262037185
+
+exp8_full_adaptive:
+----------------------------------------
+modality: image_modal best_kmeans_cluster_num: 9
+modality: text_modal best_kmeans_cluster_num: 12
+Best epoch :  13  , Recall :  0.10031647903436033  , NDCG :  0.044575857128122655  , Precision 0.0052994550255632345
+
+exp9_full_adaptive_flip0.10:
+----------------------------------------
+modality: image_modal best_kmeans_cluster_num: 9
+modality: text_modal best_kmeans_cluster_num: 12
+Best epoch :  12  , Recall :  0.09983989393995962  , NDCG :  0.04445943599220067  , Precision 0.005278386426203719

@@ -20,3 +20,83 @@
 [2025-12-26 13:28:14]   Epochs: 50
 [2025-12-26 13:28:14]   Batch Size: 1024
 [2025-12-26 13:28:14]   Learning Rate: 1e-3
+[2025-12-26 14:00:19] ✓ Experiment exp7_epoch_popularity completed successfully
+[2025-12-26 14:00:19] 
+[2025-12-26 14:00:19] ==================================================
+[2025-12-26 14:00:19] Starting Experiment: exp8_full_adaptive
+[2025-12-26 14:00:19] ==================================================
+[2025-12-26 14:00:19] Configuration:
+[2025-12-26 14:00:20]   Dataset: sports
+[2025-12-26 14:00:20]   GPU: 0
+[2025-12-26 14:00:20]   Adaptive Flip: 1
+[2025-12-26 14:00:20]   Activity Adaptive: 1
+[2025-12-26 14:00:20]   Epoch Adaptive: 1
+[2025-12-26 14:00:20]   Popularity Adaptive: 1
+[2025-12-26 14:00:20]   Base Flip Prob: 0.15
+[2025-12-26 14:00:20]   Epochs: 50
+[2025-12-26 14:00:20]   Batch Size: 1024
+[2025-12-26 14:00:20]   Learning Rate: 1e-3
+[2025-12-26 14:33:03] ✓ Experiment exp8_full_adaptive completed successfully
+[2025-12-26 14:33:03] 
+[2025-12-26 14:33:03] ==================================================
+[2025-12-26 14:33:03] Starting Experiment: exp9_full_adaptive_flip0.10
+[2025-12-26 14:33:03] ==================================================
+[2025-12-26 14:33:03] Configuration:
+[2025-12-26 14:33:03]   Dataset: sports
+[2025-12-26 14:33:03]   GPU: 0
+[2025-12-26 14:33:03]   Adaptive Flip: 1
+[2025-12-26 14:33:03]   Activity Adaptive: 1
+[2025-12-26 14:33:03]   Epoch Adaptive: 1
+[2025-12-26 14:33:03]   Popularity Adaptive: 1
+[2025-12-26 14:33:03]   Base Flip Prob: 0.10
+[2025-12-26 14:33:03]   Epochs: 50
+[2025-12-26 14:33:03]   Batch Size: 1024
+[2025-12-26 14:33:03]   Learning Rate: 1e-3
+[2025-12-26 15:05:46] ✓ Experiment exp9_full_adaptive_flip0.10 completed successfully
+[2025-12-26 15:05:46] 
+[2025-12-26 15:05:46] ==================================================
+[2025-12-26 15:05:46] Starting Experiment: exp10_full_adaptive_flip0.20
+[2025-12-26 15:05:46] ==================================================
+[2025-12-26 15:05:46] Configuration:
+[2025-12-26 15:05:46]   Dataset: sports
+[2025-12-26 15:05:46]   GPU: 0
+[2025-12-26 15:05:46]   Adaptive Flip: 1
+[2025-12-26 15:05:46]   Activity Adaptive: 1
+[2025-12-26 15:05:46]   Epoch Adaptive: 1
+[2025-12-26 15:05:46]   Popularity Adaptive: 1
+[2025-12-26 15:05:46]   Base Flip Prob: 0.20
+[2025-12-26 15:05:46]   Epochs: 50
+[2025-12-26 15:05:46]   Batch Size: 1024
+[2025-12-26 15:05:46]   Learning Rate: 1e-3
+[2025-12-26 15:38:50] ✓ Experiment exp10_full_adaptive_flip0.20 completed successfully
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] ==================================================
+[2025-12-26 15:38:50] Extracting Results
+[2025-12-26 15:38:50] ==================================================
+[2025-12-26 15:38:50] Extracting results from exp10_full_adaptive_flip0.20...
+[2025-12-26 15:38:50] Extracting results from exp7_epoch_popularity...
+[2025-12-26 15:38:50] Extracting results from exp8_full_adaptive...
+[2025-12-26 15:38:50] Extracting results from exp9_full_adaptive_flip0.10...
+[2025-12-26 15:38:50] Results summary saved to: ./results_ablation_sports_20251226_132814/results_summary.txt
+[2025-12-26 15:38:50] Comparison script created: ./results_ablation_sports_20251226_132814/compare_results.py
+[2025-12-26 15:38:50] ==================================================
+[2025-12-26 15:38:50] All Experiments Completed!
+[2025-12-26 15:38:50] ==================================================
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] Results Location: ./results_ablation_sports_20251226_132814
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] To view results summary:
+[2025-12-26 15:38:50]   cat ./results_ablation_sports_20251226_132814/results_summary.txt
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] To compare results (requires pandas):
+[2025-12-26 15:38:50]   cd ./results_ablation_sports_20251226_132814
+[2025-12-26 15:38:50]   python compare_results.py
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] Individual experiment logs:
+[2025-12-26 15:38:50]   exp10_full_adaptive_flip0.20/training.log
+[2025-12-26 15:38:50]   exp7_epoch_popularity/training.log
+[2025-12-26 15:38:50]   exp8_full_adaptive/training.log
+[2025-12-26 15:38:50]   exp9_full_adaptive_flip0.10/training.log
+[2025-12-26 15:38:50] 
+[2025-12-26 15:38:50] ==================================================
+[2025-12-26 15:38:50] Experiment suite finished successfully!

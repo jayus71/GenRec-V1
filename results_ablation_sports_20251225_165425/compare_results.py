@@ -1,3 +1,8 @@
+"""
+Parse and compare experimental results
+Usage: python compare_results.py
+"""
+
 import os
 import re
 import pandas as pd
@@ -16,12 +21,23 @@ def parse_training_log(log_file):
         with open(log_file, 'r') as f:
             content = f.read()
 
-            # Look for best epoch results (adjust patterns based on your log format)
-            # Example patterns - modify based on actual output
-            recall_match = re.search(r'[Bb]est.*[Rr]ecall@?20[:\s]+([0-9.]+)', content)
-            ndcg_match = re.search(r'[Bb]est.*[Nn][Dd][Cc][Gg]@?20[:\s]+([0-9.]+)', content)
-            precision_match = re.search(r'[Bb]est.*[Pp]recision@?20[:\s]+([0-9.]+)', content)
-            epoch_match = re.search(r'[Bb]est [Ee]poch[:\s]+([0-9]+)', content)
+            best_line = re.search(
+                r'Best\s+epoch\s*:\s*(\d+)\s*,\s*Recall\s*:\s*([0-9.]+)\s*,\s*NDCG\s*:\s*([0-9.]+)\s*,\s*Precision\s*:?\s*([0-9.]+)',
+                content,
+                re.IGNORECASE
+            )
+
+            if best_line:
+                metrics['best_epoch'] = int(best_line.group(1))
+                metrics['recall@20'] = float(best_line.group(2))
+                metrics['ndcg@20'] = float(best_line.group(3))
+                metrics['precision@20'] = float(best_line.group(4))
+                return metrics
+
+            recall_match = re.search(r'[Bb]est.*[Rr]ecall(?:@?20)?\s*[:=\s]+([0-9.]+)', content)
+            ndcg_match = re.search(r'[Bb]est.*[Nn][Dd][Cc][Gg](?:@?20)?\s*[:=\s]+([0-9.]+)', content)
+            precision_match = re.search(r'[Bb]est.*[Pp]recision(?:@?20)?\s*[:=\s]+([0-9.]+)', content)
+            epoch_match = re.search(r'[Bb]est\s+[Ee]poch\s*[:=\s]+([0-9]+)', content)
 
             if recall_match:
                 metrics['recall@20'] = float(recall_match.group(1))
