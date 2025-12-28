@@ -176,5 +176,3 @@ cython_debug/
 
 Datasets/
 runs/
-__*
-*.md
