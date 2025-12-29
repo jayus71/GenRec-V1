@@ -1,0 +1,26 @@
+GenRec Ablation Study Results
+==============================
+Dataset: sports
+Epochs: 50
+Batch Size: 1024
+
+[Baseline]
+  Best Recall@20: N/A
+  Best NDCG@20:   N/A
+  Training Time:  N/As
+
+[+DDIM]
+  Best Recall@20: N/A
+  Best NDCG@20:   N/A
+  Training Time:  N/As
+
+[+Importance Sampling]
+  Best Recall@20: N/A
+  Best NDCG@20:   N/A
+  Training Time:  N/As
+
+[+DDIM +Importance]
+  Best Recall@20: N/A
+  Best NDCG@20:   N/A
+  Training Time:  N/As
+

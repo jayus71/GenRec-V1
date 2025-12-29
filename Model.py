@@ -545,11 +545,16 @@ class FlipInterestDiffusion(nn.Module):
 		training_losses(): loss function
 	'''
 	def __init__(self, steps=5, base_temp=1.0):
-		super(FlipInterestDiffusion, self).__init__()  
-		self.eps = 1e-8 
+		super(FlipInterestDiffusion, self).__init__()
+		self.eps = 1e-8
 		self.steps = steps
-		self.base_temp = base_temp  
+		self.base_temp = base_temp
 		#self.alpha_bar0, self.alpha_bar1 = self.get_cum() # self.alpha_bar0：0->1 cumulative transition probability state trans，self.alpha_bar1 1->0 cumulative transition probability
+
+		# Importance sampling: track timestep losses
+		self.timestep_losses = torch.ones(steps).cuda()  # Initialize to 1
+		self.loss_momentum = 0.9  # Momentum for moving average
+		self.loss_update_counter = 0  # Update counter
 		
 	def _compute_sparsity(self, x):
 		"""
@@ -714,8 +719,101 @@ class FlipInterestDiffusion(nn.Module):
 				#print("x_t:", x_t)
 			else:
 				x_t =  torch.bernoulli(probs)
-	
+
 		return x_t, probs
+
+	def p_sample_ddim(self, model, x_start, steps, ddim_steps=2):
+		"""
+		DDIM accelerated sampling: train with 5 steps, inference with 2-3 steps
+
+		Args:
+			model: Denoising model
+			x_start: Original interaction data [batch_size, item_num]
+			steps: Total training steps (5)
+			ddim_steps: Actual sampling steps (2 or 3), instead of 5
+
+		Returns:
+			x_t: Denoised interaction [batch_size, item_num]
+			probs: Prediction probabilities [batch_size, item_num]
+		"""
+		batch_size = x_start.shape[0]
+
+		# Key: select subsequence timesteps
+		if ddim_steps == 2:
+			timesteps = [steps - 1, 0]  # Only sample start and end
+		elif ddim_steps == 3:
+			timesteps = [steps - 1, steps // 2, 0]  # Sample 3 key points
+		else:
+			timesteps = list(range(self.steps))[::-1]  # Fallback to standard DDPM
+
+		# Initialize noise state
+		if steps == 0:
+			x_t = x_start
+		else:
+			t = torch.tensor([timesteps[0]] * batch_size).cuda()
+			x_t = self.q_sample(x_start, t)
+
+		# DDIM skip-step denoising
+		for idx, i in enumerate(timesteps[:-1]):
+			t = torch.tensor([i] * x_t.shape[0]).cuda()
+			logits, probs = self.p_interest_shift_probs(model, x_t, t)
+
+			# DDIM deterministic update (reduce randomness)
+			if idx < len(timesteps) - 2:  # Not the last step
+				# Use DDIM formula for large step jumps
+				x_t = (probs > 0.5).float()  # Deterministic sampling
+			else:
+				x_t = torch.bernoulli(probs)  # Keep randomness in final step
+
+		return x_t, probs
+
+	def sample_timesteps_importance(self, batch_size):
+		"""
+		Importance sampling based on historical losses
+		Timesteps with higher losses have higher sampling probability
+
+		Returns:
+			t: Sampled timesteps [batch_size]
+		"""
+		# Normalize to probability distribution
+		probs = self.timestep_losses / self.timestep_losses.sum()
+
+		# Sample based on probability (higher loss timesteps are more likely)
+		t = torch.multinomial(
+			probs.repeat(batch_size, 1),
+			num_samples=1,
+			replacement=True
+		).squeeze(-1).cuda()
+
+		return t
+
+	def update_timestep_losses(self, t, losses):
+		"""
+		Update timestep loss history
+
+		Args:
+			t: Current batch timesteps [batch_size]
+			losses: Current batch sample losses [batch_size]
+		"""
+		self.loss_update_counter += 1
+
+		# Update average loss for each timestep
+		for timestep in range(self.steps):
+			mask = (t == timestep)
+			if mask.any():
+				step_loss = losses[mask].mean().item()
+				# Moving average update (smooth historical loss)
+				self.timestep_losses[timestep] = (
+					self.loss_momentum * self.timestep_losses[timestep] +
+					(1 - self.loss_momentum) * step_loss
+				)
+
+		# Print statistics every 100 updates
+		if self.loss_update_counter % 100 == 0:
+			probs = (self.timestep_losses / self.timestep_losses.sum()).cpu().numpy()
+			print(f"\n[Importance Sampling] Update #{self.loss_update_counter}")
+			print(f"  Timestep losses: {self.timestep_losses.cpu().numpy()}")
+			print(f"  Sampling probs:  {probs}")
 
 	def training_losses(self, model, x_start, itmEmbeds, batch_index, model_feats, text_feats, audio_feats):
 		'''
@@ -728,8 +826,11 @@ class FlipInterestDiffusion(nn.Module):
 		pos_weight = torch.sum(1 - x_start) / (torch.sum(x_start) + 1e-8)
 		# pos_weight =  (torch.sum(x_start) + 1e-8) / torch.sum(1 - x_start)
 		batch_size = x_start.size(0)
-		# Randomly sample time steps
-		t = torch.randint(0, self.steps, (batch_size,)).long().cuda() # t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024]) 
+		# Sample time steps: use importance sampling if enabled
+		if args.importance_sampling:
+			t = self.sample_timesteps_importance(batch_size)
+		else:
+			t = torch.randint(0, self.steps, (batch_size,)).long().cuda() # t: tensor([1, 3, 1,  ..., 2, 1, 2], device='cuda:0') t.shape: torch.Size([1024])
 		# Forward generation
 		x_t = self.q_sample(x_start, t) # torch.Size([1024, 6710])
 		logits, probs = self.p_interest_shift_probs(model, x_t, t)
@@ -747,6 +848,11 @@ class FlipInterestDiffusion(nn.Module):
 		neg_loss = -(1 - adaptive_alpha) * p.pow(gamma) * neg_mask * torch.log(1 - p)
 		#focal_loss = (pos_loss + neg_loss).mean()
 		focal_loss = (pos_loss + neg_loss).sum() / (pos_mask.sum() + neg_mask.sum() + 1e-8)
+
+		# Update timestep losses for importance sampling
+		if args.importance_sampling:
+			sample_losses = (pos_loss + neg_loss).sum(dim=1) / (pos_mask.sum(dim=1) + neg_mask.sum(dim=1) + 1e-8)
+			self.update_timestep_losses(t, sample_losses.detach())
 		bce_loss = F.binary_cross_entropy_with_logits(
 			logits, x_start.float(), 
 			pos_weight=pos_weight.cuda() 

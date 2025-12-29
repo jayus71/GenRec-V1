@@ -59,6 +59,9 @@ class Coach:
 
 		log('Model Initialized')
 
+		import time
+		start_time = time.time()
+
 		for ep in range(0, args.epoch):
 			tstFlag = (ep % args.tstEpoch == 0)
 			reses = self.trainEpoch(ep)
@@ -79,7 +82,10 @@ class Coach:
 				self.writer.add_scalar('Metric/Recall', reses['Recall'], ep)
 				self.writer.add_scalar('Metric/NDCG', reses['NDCG'], ep)
 				self.writer.add_scalar('Metric/Precision', reses['Precision'], ep)
-		print('Best epoch : ', bestEpoch, ' , Recall : ', recallMax, ' , NDCG : ', ndcgMax, ' , Precision', precisionMax)
+
+		end_time = time.time()
+		total_time = end_time - start_time
+		print('Best epoch : ', bestEpoch, ' , Recall : ', recallMax, ' , NDCG : ', ndcgMax, ' , Precision', precisionMax, ' , Time : ', total_time)
 		self.writer.close()
 
 	def prepareModel(self):
@@ -382,7 +388,15 @@ class Coach:
 					self.audio_II_matrix.shape: torch.Size([6710, 6710])
 
 				'''
-				denoised_batch, denoised_prob = self.diffusion_model.p_sample(self.denoise_model_image, batch_item, args.sampling_steps, args.bayesian_samplinge_schedule)
+				# Use DDIM or standard sampling based on args
+				if args.use_ddim:
+					denoised_batch, denoised_prob = self.diffusion_model.p_sample_ddim(
+						self.denoise_model_image, batch_item, args.sampling_steps, args.ddim_steps
+					)
+				else:
+					denoised_batch, denoised_prob = self.diffusion_model.p_sample(
+						self.denoise_model_image, batch_item, args.sampling_steps, args.bayesian_samplinge_schedule
+					)
 				# denoised_batch += batch_item
 				# print("batch_item:", batch_item)
 				# print("denoised_batch:", denoised_batch) 
